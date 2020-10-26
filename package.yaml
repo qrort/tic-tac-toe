@@ -1,0 +1,84 @@
+name:                tic-tac-toe
+version:             0.1.0.0
+github:              "qrort/tic-tac-toe"
+license:             BSD3
+author:              "Aleksei Pleshakov"
+maintainer:          "axenick@list.ru"
+copyright:           "2020 Aleksei Pleshakov"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/qrort/tic-tac-toe#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- aeson
+- servant-server
+- servant-client
+- http-client
+- wai
+- warp
+- servant 
+- time
+- text
+- generic-deriving
+- comonad
+- mtl
+- transformers
+- brick
+- microlens
+- microlens-th
+- vty
+- linear
+- random
+
+library:
+  source-dirs: src
+
+executables:
+  server:
+    main:                ServerMain.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is ServerMain
+    dependencies:
+    - base
+    - tic-tac-toe
+  client:
+    main:               ClientMain.hs
+    source-dirs:        app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -main-is ClientMain
+    dependencies:
+    - base
+    - tic-tac-toe
+
+tests:
+  tic-tac-toe-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - tic-tac-toe
+    - hspec
+    - hspec-wai
+    - hspec-wai-json
+    - aeson
