@@ -7,10 +7,13 @@
 module BoardUtils
   (
     Board(..),
+    MoveReq(..),
     sz, objects,
     aimove,
     freshBoard,
-    putCell
+    putCell,
+    reqboard,
+    reqgid  
   ) where
 
 import Data.Aeson
@@ -20,11 +23,14 @@ import Network.Wai.Handler.Warp
 import Servant
 import GHC.Generics
 import Data.Time
-import Data.Text
+import Data.Text(Text, unpack, pack, concat)
+import Prelude hiding (concat)
 import Types
 import Lens.Micro.TH (makeLenses)
 import Lens.Micro ((&), (.~), (%~), (^.))
 import System.Random (Random(..), StdGen(..), mkStdGen, randomR)
+import Data.List.Split
+import Data.Aeson (encode)
 
 data Board = Board
   {
@@ -37,6 +43,17 @@ makeLenses ''Board
 instance ToJSON Board
 instance FromJSON Board
 
+data MoveReq = MoveReq
+  {
+    _reqboard :: Board,
+    _reqgid   :: Int
+  } deriving Generic
+
+makeLenses ''MoveReq
+
+instance ToJSON MoveReq
+instance FromJSON MoveReq
+
 freshBoard :: Int -> Board
 freshBoard len = Board{_sz = len, _objects = []}
 
@@ -45,7 +62,7 @@ okCell c b = (c^.coord.x >= 0 && c^.coord.y >= 0 && c^.coord.x < b^.sz && c^.coo
 
 putCell :: Cell -> Board -> Board
 putCell c b | okCell c b = b{_objects = c : (b^.objects)} 
-            | otherwise  = freshBoard $ b^.sz
+            | otherwise  = b
 
 --rewrite
 firstValidFromList :: [Pos] -> CellType -> Board -> Board

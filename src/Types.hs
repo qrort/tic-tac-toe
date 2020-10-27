@@ -1,8 +1,9 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators   #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE InstanceSigs    #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE InstanceSigs      #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Types
   (
@@ -10,7 +11,6 @@ module Types
     CellType(..),
     Pos(..),
     coord, x, y, ctype,
-    fromInt
   ) where
     
 import Data.Aeson
@@ -20,16 +20,15 @@ import Network.Wai.Handler.Warp
 import Servant
 import GHC.Generics
 import Data.Time
-import Data.Text
+import Data.Text(Text, unpack, pack, concat)
 import Lens.Micro.TH (makeLenses)
-
+import Data.List.Split
+import Data.Foldable(foldr')
+import Lens.Micro ((&), (.~), (%~), (^.))
+import Prelude hiding (concat)
+import Data.Aeson (encode)
 
 data CellType = Cross | Circle | Dot deriving (Generic, Eq)
-
-fromInt :: Integer -> CellType
-fromInt 0 = Cross
-fromInt 1 = Circle
-fromInt _ = error "invalid argument to fromInt"
 
 data Pos = Pos 
   {

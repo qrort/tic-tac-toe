@@ -15,6 +15,7 @@ import Lens.Micro ((&), (.~), (%~), (^.))
 import Types
 import BoardUtils
 import Control.Monad.Reader
+import Brick (EventM(..), Next)
 
 data Game = Game 
   {
@@ -25,5 +26,6 @@ data Game = Game
 
 makeLenses ''Game
 
---type AppM a = ReaderT Game IO a
+data Tick = Tick
 
+type Name = ()

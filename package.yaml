@@ -38,6 +38,7 @@ dependencies:
 - microlens-th
 - vty
 - linear
+- split
 - random
 
 library:
