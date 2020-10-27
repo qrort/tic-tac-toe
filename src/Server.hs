@@ -23,7 +23,7 @@ import BoardUtils
 import Lens.Micro ((&), (.~), (%~), (^.))
 
 type API = "startgame" :> Get '[JSON] Int
-  :<|> "requestmove" :> ReqBody '[JSON] MoveReq :> Get '[JSON] Board
+  :<|> "requestmove" :> ReqBody '[JSON] MoveRequest :> Get '[JSON] Board
   :<|> "simple" :> Get '[JSON] Board
 
 server :: Server API
@@ -34,7 +34,7 @@ server = startgame
     startgame :: Handler Int
     startgame = return 123
 
-    move :: MoveReq -> Handler Board
+    move :: MoveRequest -> Handler Board
     move req = do 
       return $ aimove Circle (req^.reqboard)
 

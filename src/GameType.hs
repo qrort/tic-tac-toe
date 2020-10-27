@@ -4,24 +4,18 @@
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE InstanceSigs    #-}
 
-module LibEnv where
+module GameType where
 
-import Control.Applicative ((<|>))
-import Control.Monad (guard)
-import Data.Maybe (fromMaybe)
-import Data.IORef
-import Lens.Micro.TH (makeLenses)
-import Lens.Micro ((&), (.~), (%~), (^.))
+import Lens.Micro.TH
 import Types
 import BoardUtils
-import Control.Monad.Reader
-import Brick (EventM(..), Next)
 
 data Game = Game 
   {
   _gid       :: Int,
   _selection :: Pos, 
-  _board     :: Board
+  _board     :: Board,
+  _result    :: GameResult
   }
 
 makeLenses ''Game

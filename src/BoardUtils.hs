@@ -7,7 +7,7 @@
 module BoardUtils
   (
     Board(..),
-    MoveReq(..),
+    MoveRequest(..),
     sz, objects,
     aimove,
     freshBoard,
@@ -27,7 +27,7 @@ import Data.Text(Text, unpack, pack, concat)
 import Prelude hiding (concat)
 import Types
 import Lens.Micro.TH (makeLenses)
-import Lens.Micro ((&), (.~), (%~), (^.))
+import Lens.Micro ((&), (.~), (%~), (^.), (^..), traversed)
 import System.Random (Random(..), StdGen(..), mkStdGen, randomR)
 import Data.List.Split
 import Data.Aeson (encode)
@@ -36,29 +36,34 @@ data Board = Board
   {
     _sz          :: Int,
     _objects     :: [Cell]
-  } deriving Generic
+  } deriving (Show, Generic)
 
 makeLenses ''Board
 
 instance ToJSON Board
 instance FromJSON Board
 
-data MoveReq = MoveReq
+data MoveRequest = MoveRequest
   {
     _reqboard :: Board,
     _reqgid   :: Int
   } deriving Generic
 
-makeLenses ''MoveReq
+makeLenses ''MoveRequest
 
-instance ToJSON MoveReq
-instance FromJSON MoveReq
+instance ToJSON MoveRequest
+instance FromJSON MoveRequest
 
 freshBoard :: Int -> Board
 freshBoard len = Board{_sz = len, _objects = []}
 
 okCell :: Cell -> Board -> Bool
-okCell c b = (c^.coord.x >= 0 && c^.coord.y >= 0 && c^.coord.x < b^.sz && c^.coord.y < b^.sz) && (not (elem c (b^.objects)))
+okCell c b = 
+  (c^.coord.x >= 0 
+  && c^.coord.y >= 0 
+  && c^.coord.x < b^.sz 
+  && c^.coord.y < b^.sz) 
+  && (not (elem (c^.coord) (b ^.. objects . traversed . coord)))
 
 putCell :: Cell -> Board -> Board
 putCell c b | okCell c b = b{_objects = c : (b^.objects)} 
@@ -73,4 +78,4 @@ firstValidFromList (x:xs) ct b | okCell nc b = putCell nc b
                                     nc = Cell{_ctype = ct, _coord = x}
 
 aimove :: CellType -> Board -> Board
-aimove ct b = firstValidFromList [Pos x y | x <- [0..(b^.sz)], y <- [0..(b^.sz)]] ct b
+aimove ct b = firstValidFromList [Pos x y | x <- [0..(b^.sz - 1)], y <- [0..(b^.sz - 1)]] ct b

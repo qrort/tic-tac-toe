@@ -16,83 +16,37 @@ import Brick
   , str
   , attrMap, withAttr, emptyWidget, AttrName, on, fg
   , (<+>)
+  , (<=>)
   )
 import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import qualified Graphics.Vty as V
 import Lens.Micro
-import LibEnv
+import GameType
 import Types
 import BoardUtils
 import Client
-
-app :: App Game Tick Name
-app = App 
-  { appDraw = drawUI
-  , appChooseCursor = neverShowCursor
-  , appHandleEvent = handleEvent
-  , appStartEvent = return
-  , appAttrMap = const theMap
-  }
-
-moveSelection :: Int -> (Int -> Int) -> (Int -> Int) 
-moveSelection n f = \x -> helper n (f x) where
-  helper a b | (b == (-1))  = a - 1
-             | (b == a)     = 0
-             | otherwise    = b
-    
-handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
-handleEvent g (VtyEvent (V.EvKey V.KLeft []))       = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey V.KRight []))      = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x + 1))
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey V.KUp []))         = continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'w') [])) = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey V.KDown []))       = continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\x -> x + 1))
-handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
-handleEvent g (VtyEvent (V.EvKey V.KEnter []))      = do 
-  let aftermove = g{_board = putCell (Cell Cross (g^.selection)) (g^.board)}    
-  afteraimove <- liftIO $ askMove $ MoveReq (aftermove^.board) 12
-  continue $ g & board .~ afteraimove
-handleEvent g _                                     = continue g
-
--- Drawing
-
--- drawUI :: Game -> [Widget Name]
--- drawUI g =
---   [ C.center $ padRight (Pad 2) (drawStats g) <+> drawGrid g ]
+import Data.List.Split
+import Data.List(intercalate)
 
 drawUI :: Game -> [Widget Name]
-drawUI g = [ C.center $ padRight (Pad 2) (drawSelection g) <+> drawGrid g]
-
-
-drawSelection :: Game -> Widget Name
-drawSelection g = withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "Score")
-  $ C.hCenter
-  $ padAll 1
-  $ str $ (show (g^.selection.x)) ++ " " ++ (show (g^.selection.y))
+drawUI g = [ (C.hCenter $ (drawGrid g)) <=> (C.hCenter $ padTop (Pad 2) (drawStats g)) ]
 
 drawStats :: Game -> Widget Name
-drawStats g = hLimit 11
-  $ vBox [ drawScore (12)
-         , padTop (Pad 2) $ drawGameOver False
-         ]
+drawStats g = padTop (Pad 2) $ vBox 
+  [ drawGameOver (g^.result)
+  , drawBoard (g^.board)
+  ]
 
-drawScore :: Int -> Widget Name
-drawScore n = withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "Score")
-  $ C.hCenter
-  $ padAll 1
-  $ str $ show n
+drawBoard :: Board -> Widget Name
+drawBoard b = C.hCenter $ str (intercalate "\nCell" (splitOn "Cell" $ show b))
 
-drawGameOver :: Bool -> Widget Name
-drawGameOver dead =
-  if dead
-     then withAttr gameOverAttr $ C.hCenter $ str "GAME OVER"
-     else emptyWidget
+drawGameOver :: GameResult -> Widget Name
+drawGameOver x | x == Victory = withAttr gameOverAttr $ C.hCenter $ str "You won!"
+               | x == Loss    = withAttr gameOverAttr $ C.hCenter $ str "You lost..."
+               | x == Draw    = withAttr gameOverAttr $ C.hCenter $ str "Game drawn."
+               | x == Unknown = emptyWidget
 
 gameOverAttr :: AttrName
 gameOverAttr = "gameOver"
@@ -105,9 +59,9 @@ drawGrid g = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "TicTacToe")
   $ vBox rows
   where
-    rows         = [hBox $ cellsInRow r | r <- [0..n-1]]
+    rows         = [ hBox $ cellsInRow r | r <- [0..n-1] ]
     n            = g ^. board . sz 
-    cellsInRow x = [drawCoord $ (Pos x y) | y <- [0..n-1]]
+    cellsInRow x = [ drawCoord $ (Pos x y) | y <- [0..n-1] ]
     drawCoord p  = drawCell (cellAt p) p (g ^. selection)
     cellAt p     = case cellAtPos of 
       Just c  -> c^.ctype
