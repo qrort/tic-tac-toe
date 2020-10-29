@@ -4,7 +4,7 @@ module ClientSpec
 
 import Lens.Micro
 import Test.Tasty(TestTree)
-import Test.Tasty.Hspec(Spec, describe, it, shouldBe, testSpec)
+import Test.Tasty.Hspec(Spec, describe, it, shouldBe, shouldNotBe, testSpec)
 
 import BoardUtils
 import Client
@@ -46,7 +46,7 @@ fullBoard = Board { _sz = 2
                   }  
 fullGame :: Game
 fullGame = testGame & board .~ fullBoard
-  
+
 clientSpec :: Spec
 clientSpec = do
   describe "BoardTest" $ do
@@ -56,3 +56,7 @@ clientSpec = do
       (setOverResult (testGame & playerCell .~ Circle & aiCell .~ Cross))^.result `shouldBe` Loss
     it "gameDrawn" $
       (setDrawResult fullGame)^.result `shouldBe` Draw
+    it "setResult composition" $
+      (setOverResult $ setDrawResult fullGame)^.result `shouldBe` Draw
+    it "winningRow" $
+      (findWinningRow $ setOverResult $ setDrawResult testGame) `shouldBe` [ Pos 2 0, Pos 1 1, Pos 0 2]

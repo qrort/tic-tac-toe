@@ -6,6 +6,7 @@ module Client
   , getFirstMove
   , setOverResult
   , setDrawResult
+  , findWinningRow
   ) where
 
 import Brick
@@ -40,12 +41,13 @@ moveSelection n f = \x -> helper n (f x) where
              | (b == a)     = 0
              | otherwise    = b
 
+ditchEmpty :: [[Pos]] -> [[Pos]]
+ditchEmpty []     = []
+ditchEmpty (x:xs) = if (length x == 0) then (ditchEmpty xs) else (x : (ditchEmpty xs)) 
+
 triplePositions :: Int -> Int -> [[Pos]]
 triplePositions n r = ditchEmpty [ makeSequence n x y vec | x <- [0..n - 1], y <- [0..n - 1], vec <- vecs ] where
-  vecs = [(1, 0), (0, 1), (1, 1), (1, -1)]
-  ditchEmpty :: [[Pos]] -> [[Pos]]
-  ditchEmpty []     = []
-  ditchEmpty (x:xs) = if (length x == 0) then (ditchEmpty xs) else (x : (ditchEmpty xs)) 
+  vecs = [(1, 0), (0, 1), (1, 1), (1, (-1))]
   makeSequence :: Int -> Int -> Int -> (Int, Int) -> [Pos]
   makeSequence n x y (dx, dy) | (x + (r - 1) * dx >= n) || (y + (r - 1) * dy >= n) = []
                               | otherwise                              = [ Pos (x + k * dx)  (y + k * dy) | k <- [0..r - 1]]
@@ -54,8 +56,9 @@ isOverBool :: Game -> Bool
 isOverBool g = ((setOverResult $ setDrawResult g)^.result /= Unknown)
 
 setOverResult :: Game -> Game
-setOverResult g | g^.result /= Draw = g{_result = collect [ isOver (g^.board.objects) pos | pos <- (triplePositions (g^.board.sz) (g^.row)) ]}
-                | otherwise         = g where
+setOverResult g = if (somebodyWon /= Unknown) then g{_result = somebodyWon} else g where
+  somebodyWon :: GameResult
+  somebodyWon = collect [ isOver (g^.board.objects) pos | pos <- (triplePositions (g^.board.sz) (g^.row)) ]
   collect :: [GameResult] -> GameResult
   collect [] = Unknown
   collect (x:xs) = case x of
@@ -73,6 +76,21 @@ setOverResult g | g^.result /= Draw = g{_result = collect [ isOver (g^.board.obj
     Nothing -> Unknown
     where 
       samePos = objs ^? traversed . filtered (\arg -> (arg^.coord == p) && (arg^.ctype == ct))
+
+findWinningRow :: Game -> [Pos]
+findWinningRow g | (g^.result == Unknown || g^.result == Draw) = []
+                 | otherwise                                   = head list where
+
+  list = ditchEmpty [returnTriple (g^.board.objects) pos ct [] | pos <- (triplePositions (g^.board.sz) (g^.row)), ct <- [ Cross, Circle ] ]
+
+  returnTriple :: [Cell] -> [Pos] -> CellType -> [Pos] -> [Pos]
+  returnTriple _    []     ct acc = acc
+  returnTriple objs (p:ps) ct acc = case samePos of
+    Just _  -> returnTriple objs ps ct (p:acc)
+    Nothing -> []
+    where 
+      samePos = objs ^? traversed . filtered (\arg -> (arg^.coord == p) && (arg^.ctype == ct))
+
 
 setDrawResult :: Game -> Game
 setDrawResult g = if (length (g^.board.objects) == (g^.board.sz) * (g^.board.sz)) then g{_result = Draw} else g
@@ -93,7 +111,7 @@ handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
 
 handleEvent g (VtyEvent (V.EvKey V.KLeft []))       = do
-  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
+  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
 
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = do
   continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
@@ -102,19 +120,19 @@ handleEvent g (VtyEvent (V.EvKey V.KRight []))      = do
   continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg + 1))
 
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = do
-  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
+  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg + 1))
 
 handleEvent g (VtyEvent (V.EvKey V.KUp []))         = do
   continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
 
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'w') [])) = do
-  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
+  continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
 
 handleEvent g (VtyEvent (V.EvKey V.KDown []))       = do
   continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\arg -> arg + 1))
 
 handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = do
-  continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\arg -> arg - 1))
+  continue $ g & (selection.x) %~ (moveSelection (g^.board.sz) (\arg -> arg + 1))
 
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = do
   newBoard <- liftIO $ getFirstMove $ freshBoard (g^.board.sz)

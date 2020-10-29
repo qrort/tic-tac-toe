@@ -36,14 +36,14 @@ formApp =
             case ev of
                 VtyEvent (V.EvResize {})     -> continue s
                 VtyEvent (V.EvKey (V.KChar 'q') []) -> halt $ mkForm ((formState s) & pcell .~ Dot)
-                VtyEvent (V.EvKey (V.KChar ' ') [])   -> if (allFieldsValid s) 
+                VtyEvent (V.EvKey V.KEnter [])   -> if (allFieldsValid s) 
                 then
                   halt s
                 else
                   continue s
 
                 -- Enter quits only when we aren't in the multi-line editor.
-                VtyEvent (V.EvKey V.KEnter []) -> do
+                VtyEvent (V.EvKey (V.KChar ' ') []) -> do
                   let cur = F.focusGetCurrent $ formFocus s
                   case cur of
                     Just c  -> case c of
@@ -86,6 +86,8 @@ formMain = do
       state <- cfgToGame (formState f')
       return state
     else do
+      -- it is okay not to initialize other fields as
+      -- Dot is used as exit flag 
       return Game{_playerCell = Dot}
     where
       cfgToGame :: Cfg -> IO Game
@@ -105,7 +107,7 @@ drawUI g = [ (padTop (Pad 5) $ (C.hCenter $ (drawGrid g))) <=> (C.hCenter $ (dra
 mkForm :: Cfg -> Form Cfg e Name
 mkForm =
     let label s w = padBottom (Pad 1) $
-                  (vLimit 1 $ hLimit 15 $ str s <+> fill ' ') <+> w
+                  (vLimit 1 $ hLimit 20 $ str s <+> fill ' ') <+> w
     in newForm [  label "Board size" @@= editShowableField len LenField
                 , label "In line to win" @@= editShowableField win WinField
                 , label "Your cell type" @@= radioField pcell
@@ -115,17 +117,17 @@ mkForm =
             ]
 
 drawForm :: Form Cfg e Name -> [Widget Name]
-drawForm f = [C.vCenter $ C.hCenter form <=> C.hCenter help]
+drawForm f = [C.center form <=> C.hCenter help]
     where
-        form = B.border $ padTop (Pad 1) $ hLimit 50 $ renderForm f
+        form = B.border $ padTop (Pad 1) $ hLimit 70 $ renderForm f
         help = padTop (Pad 1) $ B.borderWithLabel (str "Help") body
         body = str $ "- Size must be an integer and not exceed 10\n" <>
                      "  (try entering an invalid size!)\n" <>
                      "- Cell type selects from a list of options\n" <>
                      "- Number of characters in line to win should exceed 2\n" <>
-                     "- and be less or equal to board size size\n" <>
-                     "- Tab, Shift+Tab to switch, Enter to select\n" <>
-                     "- Space to submit form. Q to quit\n" 
+                     "  and be less or equal to board size size\n" <>
+                     "- Tab, Shift+Tab to switch, Space to select\n" <>
+                     "- Enter to submit form. Q to quit\n" 
 
 drawStats :: Game -> Widget Name
 drawStats g = padTop (Pad 2) $ vBox 
@@ -144,26 +146,36 @@ drawBoard :: Board -> Widget Name
 drawBoard b = C.hCenter $ str (intercalate "\nCell" (splitOn "Cell" $ show b))
 
 drawGameOver :: GameResult -> Widget Name
-drawGameOver g | g == Victory = withAttr gameOverAttr $ C.hCenter $ str "You won!"
-               | g == Loss    = withAttr gameOverAttr $ C.hCenter $ str "You lost..."
-               | g == Draw    = withAttr gameOverAttr $ C.hCenter $ str "Game drawn."
+drawGameOver g | g == Victory = withAttr victoryAttr $ C.hCenter $ str "You won!"
+               | g == Loss    = withAttr lossAttr $ C.hCenter $ str "You lost..."
+               | g == Draw    = withAttr drawAttr $ C.hCenter $ str "Game drawn."
                | otherwise    = emptyWidget
 
-gameOverAttr :: AttrName
-gameOverAttr = "gameOver"
+victoryAttr :: AttrName
+victoryAttr = "victory"
+
+lossAttr :: AttrName
+lossAttr = "loss"
+
+drawAttr :: AttrName
+drawAttr = "draw"
 
 selectedAttr :: AttrName 
 selectedAttr = "selected"
 
+comboAttr :: AttrName
+comboAttr = "combo"
+
 drawGrid :: Game -> Widget Name
 drawGrid g = withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "TicTacToe")
+  $ B.borderWithLabel (str "<!>")
   $ vBox rows
   where
+    winningRow   = findWinningRow g
     rows         = [ hBox $ cellsInRow r | r <- [0..n-1] ]
     n            = g ^. board . sz 
     cellsInRow a = [ drawCoord $ (Pos a b) | b <- [0..n-1] ]
-    drawCoord p  = drawCell (cellAt p) p (g ^. selection)
+    drawCoord p  = drawCell (cellAt p) p (g ^. selection) winningRow
     cellAt p     = case cellAtPos of 
       Just c  -> c^.ctype
       Nothing -> Dot
@@ -175,12 +187,16 @@ appendAttrIf True attr widget  = withAttr attr widget
 appendAttrIf False _ widget    = widget
 
 
-drawCell :: CellType -> Pos -> Pos -> Widget Name
-drawCell celltype pos target = appendAttrIf (pos == target) selectedAttr (cellWidget celltype) where
-  cellWidget :: CellType -> Widget Name
-  cellWidget Cross  = xSymbol
-  cellWidget Circle = oSymbol
-  cellWidget Dot    = dotSymbol
+drawCell :: CellType -> Pos -> Pos -> [Pos] -> Widget Name
+drawCell celltype pos target wr = 
+  appendAttrIf (pos `elem` wr) comboAttr $
+  appendAttrIf (pos == target) selectedAttr $ 
+  (cellWidget celltype) 
+  where
+    cellWidget :: CellType -> Widget Name
+    cellWidget Cross  = xSymbol
+    cellWidget Circle = oSymbol
+    cellWidget Dot    = dotSymbol
 
 xSymbol :: Widget Name
 xSymbol = str "X"
@@ -198,5 +214,8 @@ theMap = attrMap V.defAttr
   , (invalidFormInputAttr, V.white `on` V.red)
   , (focusedFormInputAttr, V.black `on` V.yellow)
   , (selectedAttr, V.black `on` V.yellow)
-  , (gameOverAttr, fg V.red `V.withStyle` V.bold)
+  , (lossAttr, fg V.red `V.withStyle` V.bold)
+  , (victoryAttr, fg V.green `V.withStyle` V.bold)
+  , (drawAttr, fg V.yellow `V.withStyle` V.bold)
+  , (comboAttr, V.white `on` V.blue)
   ]
