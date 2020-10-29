@@ -5,33 +5,22 @@
 {-# LANGUAGE InstanceSigs    #-}
 
 module BoardUtils
-  (
-    Board(..),
-    MoveRequest(..),
-    sz, objects,
-    aimove,
-    freshBoard,
-    putCell,
-    reqboard,
-    reqcell, 
-    emptySquares
+  ( Board(..)
+  , MoveRequest(..)
+  , sz, objects
+  , aimove
+  , freshBoard
+  , putCell, okCell
+  , reqboard, reqcell 
+  , emptySquares
   ) where
 
 import Data.Aeson
-import Data.Aeson.TH
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import GHC.Generics
-import Data.Time
-import Data.Text(Text, unpack, pack, concat)
-import Prelude hiding (concat)
-import Types
-import Lens.Micro.TH (makeLenses)
 import Lens.Micro
-import System.Random (Random(..), StdGen(..), mkStdGen, randomR)
-import Data.List.Split
-import Data.Aeson (encode)
+import Lens.Micro.TH (makeLenses)
+import GHC.Generics
+import Types
+import Prelude hiding (concat)
 
 data Board = Board
   {
@@ -90,6 +79,6 @@ emptySquares b = ditchEmpty [aval b $ Pos x y | x <- [0..b^.sz - 1], y <- [0..b^
     Nothing -> ditchEmpty xs
   aval :: Board -> Pos -> Maybe Pos
   aval b p = case (b ^? objects . traversed . coord .filtered (== p)) of
-    Just x  -> Nothing
+    Just _  -> Nothing
     Nothing -> Just p
 

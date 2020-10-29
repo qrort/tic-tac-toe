@@ -1,11 +1,12 @@
 module ClientMain where
 
-import Client
-import Types
-import GameType
 import Brick
+import Lens.Micro((^.))
+
+import Client
+import GameType
+import Types
 import UI
-import BoardUtils
 
 app :: App Game Tick Name
 app = App 
@@ -17,10 +18,11 @@ app = App
   }
 
 main :: IO ()
-main = formMain
--- main :: IO ()
--- main = do
---   --we actually only need last False from this junk init
---   let initialState = Game (Pos 1 1) (freshBoard 3) Unknown Cross Circle False
---   finalState <- defaultMain app initialState
---   return ()
+main = do
+  initialState <- formMain
+  if initialState^.playerCell == Dot
+  then
+    return ()
+  else do
+    _ <- defaultMain app initialState
+    return ()

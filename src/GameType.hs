@@ -16,7 +16,8 @@ data Game = Game
   _board      :: Board,
   _result     :: GameResult,
   _playerCell :: CellType,
-  _aiCell     :: CellType
+  _aiCell     :: CellType,
+  _row        :: Int
   } deriving (Show)
 
 makeLenses ''Game
@@ -24,6 +25,7 @@ makeLenses ''Game
 data Cfg = Cfg 
   {
   _len   :: Int,
+  _win   :: Int,
   _pcell :: CellType
   } deriving (Show)
 
@@ -32,6 +34,7 @@ makeLenses ''Cfg
 data Tick = Tick
 
 data Name = LenField
+          | WinField
           | CrossField
           | CircleField
           deriving (Eq, Ord, Show)

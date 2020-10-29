@@ -8,8 +8,6 @@
 module Types where
     
 import Data.Aeson
-import Data.Aeson.TH
-import Network.Wai
 import GHC.Generics
 import Lens.Micro.TH (makeLenses)
 

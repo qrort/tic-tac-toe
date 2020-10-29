@@ -27,22 +27,21 @@ dependencies:
 - wai
 - warp
 - servant 
-- time
 - text
 - generic-deriving
-- comonad
 - mtl
 - transformers
 - brick
 - microlens
 - microlens-th
 - vty
-- linear
 - split
 - random
 
 library:
   source-dirs: src
+  ghc-options:    
+  - -Wall
 
 executables:
   server:
@@ -79,7 +78,6 @@ tests:
     dependencies:
     - base
     - tic-tac-toe
+    - tasty-hspec
+    - tasty
     - hspec
-    - hspec-wai
-    - hspec-wai-json
-    - aeson

@@ -10,15 +10,12 @@ module Server
     runserver
   ) where
 
-import Data.Aeson
-import Data.Aeson.TH
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
-import GHC.Generics
 import Types
 import BoardUtils
-import Lens.Micro ((&), (.~), (%~), (^.))
+import Lens.Micro ((^.))
 import System.Random
 import Control.Monad.IO.Class (liftIO) 
 
@@ -30,8 +27,8 @@ server = move
     move :: MoveRequest -> Handler Board
     move req = do
       let list = emptySquares (req^.reqboard)
-      id <- liftIO $ randomRIO (0, length list - 1)
-      return $ putCell Cell{_ctype=(req^.reqcell), _coord=list!!id} (req^.reqboard)
+      i <- liftIO $ randomRIO (0, length list - 1)
+      return $ putCell Cell{_ctype=(req^.reqcell), _coord=list!!i} (req^.reqboard)
 
 api :: Proxy API
 api = Proxy
