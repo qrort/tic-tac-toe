@@ -12,14 +12,26 @@ import BoardUtils
 
 data Game = Game 
   {
-  _gid       :: Int,
-  _selection :: Pos, 
-  _board     :: Board,
-  _result    :: GameResult
-  }
+  _selection  :: Pos, 
+  _board      :: Board,
+  _result     :: GameResult,
+  _playerCell :: CellType,
+  _aiCell     :: CellType
+  } deriving (Show)
 
 makeLenses ''Game
 
+data Cfg = Cfg 
+  {
+  _len   :: Int,
+  _pcell :: CellType
+  } deriving (Show)
+
+makeLenses ''Cfg 
+
 data Tick = Tick
 
-type Name = ()
+data Name = LenField
+          | CrossField
+          | CircleField
+          deriving (Eq, Ord, Show)

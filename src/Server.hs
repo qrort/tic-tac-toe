@@ -16,32 +16,22 @@ import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import GHC.Generics
-import Data.Time
-import Data.Text
 import Types
 import BoardUtils
 import Lens.Micro ((&), (.~), (%~), (^.))
+import System.Random
+import Control.Monad.IO.Class (liftIO) 
 
-type API = "startgame" :> Get '[JSON] Int
-  :<|> "requestmove" :> ReqBody '[JSON] MoveRequest :> Get '[JSON] Board
-  :<|> "simple" :> Get '[JSON] Board
+type API = "move" :> ReqBody '[JSON] MoveRequest :> Get '[JSON] Board
 
 server :: Server API
-server = startgame
-    :<|> move
-    :<|> simple
+server = move
   where 
-    startgame :: Handler Int
-    startgame = return 123
-
     move :: MoveRequest -> Handler Board
-    move req = do 
-      return $ aimove Circle (req^.reqboard)
-
-    simple :: Handler Board
-    simple = do
-      return $ freshBoard 3
-
+    move req = do
+      let list = emptySquares (req^.reqboard)
+      id <- liftIO $ randomRIO (0, length list - 1)
+      return $ putCell Cell{_ctype=(req^.reqcell), _coord=list!!id} (req^.reqboard)
 
 api :: Proxy API
 api = Proxy

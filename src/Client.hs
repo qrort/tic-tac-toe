@@ -6,7 +6,7 @@
 
 module Client
   (
-    handleEvent, triplePositions
+    handleEvent
   ) where
 
 import Data.Aeson
@@ -27,12 +27,9 @@ import GameType
 import qualified Servant.Client.Streaming as S
 import Brick
 import qualified Graphics.Vty as V
-
-askGameId :: IO Int
+import Debug.Trace
 
 askMove :: MoveRequest -> IO Board
-
-simple :: IO Board
 
 monadTransform :: ClientM a -> IO a
 monadTransform clientma = do 
@@ -43,7 +40,7 @@ monadTransform clientma = do
     Left err -> error $ show err
     Right x  -> return x
 
-askGameId :<|> askMove :<|> simple = hoistClient api monadTransform (client api) 
+askMove = hoistClient api monadTransform (client api) 
 
 moveSelection :: Int -> (Int -> Int) -> (Int -> Int) 
 moveSelection n f = \x -> helper n (f x) where
@@ -62,10 +59,11 @@ triplePositions n = ditchEmpty [ makeSequence n x y vec | x <- [0..n - 1], y <- 
                               | otherwise                              = [ Pos x y, Pos (x + dx) (y + dy), Pos (x + 2 * dx) (y + 2 * dy) ]
 
 isOver :: Game -> Bool
-isOver g = ((setOverResult g)^.result /= Unknown)
+isOver g = ((setOverResult $ setDrawResult g)^.result /= Unknown)
 
 setOverResult :: Game -> Game
-setOverResult g = g{_result = collect [ isOver (g^.board.objects) pos | pos <- (triplePositions (g^.board.sz)) ]} where
+setOverResult g | g^.result /= Draw = g{_result = collect [ isOver (g^.board.objects) pos | pos <- (triplePositions (g^.board.sz)) ]}
+                | otherwise         = g where
   collect :: [GameResult] -> GameResult
   collect [] = Unknown
   collect (x:xs) = case x of
@@ -75,14 +73,14 @@ setOverResult g = g{_result = collect [ isOver (g^.board.objects) pos | pos <- (
   isOver :: [Cell] -> [Pos] -> GameResult
   isOver objs ps = collect [isTriple objs ps Cross, isTriple objs ps Circle]
   isTriple :: [Cell] -> [Pos] -> CellType -> GameResult
-  isTriple _ [] Cross            = Victory
-  isTriple _ [] Circle           = Loss
+  isTriple       _     [] ct | ct == (g^.playerCell) = Victory
+                             | ct == (g^.aiCell)     = Loss
+                             | otherwise             = error "wrong isTriple CellType"
   isTriple objects (p:ps) ct = case samePos of
     Just c  -> isTriple objects ps ct
     Nothing -> Unknown
     where 
       samePos = objects ^? traversed . filtered (\x -> (x^.coord == p) && (x^.ctype == ct))
-
 
 setDrawResult :: Game -> Game
 setDrawResult g = if (length (g^.board.objects) == (g^.board.sz) * (g^.board.sz)) then g{_result = Draw} else g
@@ -121,13 +119,12 @@ handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = do
   continue $ g & (selection.y) %~ (moveSelection (g^.board.sz) (\x -> x - 1))
 
 handleEvent g (VtyEvent (V.EvKey V.KEnter []))      = gameOnGuard g $ do 
-  let aftermove = g{_board = putCell (Cell Cross (g^.selection)) (g^.board)}   
-  if isOver aftermove 
+  let aftermove = g{_board = putCell (Cell (g^.playerCell) (g^.selection)) (g^.board)}   
+  if isOver aftermove
   then
-    continue aftermove
+    continue $ setOverResult $ setDrawResult aftermove
   else do
-    afteraimove <- liftIO $ askMove $ MoveRequest (aftermove^.board) 12
+    afteraimove <- liftIO $ askMove $ MoveRequest (aftermove^.board) (aftermove^.aiCell)
     continue $ setOverResult $ setDrawResult (g & board .~ afteraimove)
   
 handleEvent g _                                     = continue g
-

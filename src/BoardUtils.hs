@@ -13,7 +13,8 @@ module BoardUtils
     freshBoard,
     putCell,
     reqboard,
-    reqgid  
+    reqcell, 
+    emptySquares
   ) where
 
 import Data.Aeson
@@ -27,7 +28,7 @@ import Data.Text(Text, unpack, pack, concat)
 import Prelude hiding (concat)
 import Types
 import Lens.Micro.TH (makeLenses)
-import Lens.Micro ((&), (.~), (%~), (^.), (^..), traversed)
+import Lens.Micro
 import System.Random (Random(..), StdGen(..), mkStdGen, randomR)
 import Data.List.Split
 import Data.Aeson (encode)
@@ -46,7 +47,7 @@ instance FromJSON Board
 data MoveRequest = MoveRequest
   {
     _reqboard :: Board,
-    _reqgid   :: Int
+    _reqcell  :: CellType
   } deriving Generic
 
 makeLenses ''MoveRequest
@@ -79,3 +80,16 @@ firstValidFromList (x:xs) ct b | okCell nc b = putCell nc b
 
 aimove :: CellType -> Board -> Board
 aimove ct b = firstValidFromList [Pos x y | x <- [0..(b^.sz - 1)], y <- [0..(b^.sz - 1)]] ct b
+
+emptySquares :: Board -> [Pos]
+emptySquares b = ditchEmpty [aval b $ Pos x y | x <- [0..b^.sz - 1], y <- [0..b^.sz - 1]] where
+  ditchEmpty :: [Maybe Pos] -> [Pos]
+  ditchEmpty []     = []
+  ditchEmpty (x:xs) = case x of
+    Just p  -> p : ditchEmpty xs
+    Nothing -> ditchEmpty xs
+  aval :: Board -> Pos -> Maybe Pos
+  aval b p = case (b ^? objects . traversed . coord .filtered (== p)) of
+    Just x  -> Nothing
+    Nothing -> Just p
+

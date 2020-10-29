@@ -17,7 +17,10 @@ app = App
   }
 
 main :: IO ()
-main = do
-  let initialState = Game 1 (Pos 1 1) (freshBoard 3) Unknown
-  finalState <- defaultMain app initialState
-  return ()
+main = formMain
+-- main :: IO ()
+-- main = do
+--   --we actually only need last False from this junk init
+--   let initialState = Game (Pos 1 1) (freshBoard 3) Unknown Cross Circle False
+--   finalState <- defaultMain app initialState
+--   return ()
